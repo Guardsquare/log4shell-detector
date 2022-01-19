@@ -52,7 +52,6 @@ fun main(args: Array<String>) {
 fun check(file: File): Boolean = check(readInput(file))
 fun check(programClassPool: ClassPool): Boolean {
     val jndiLookupCounter = ClassCounter()
-    val jndiManagerOldConstructorCounter = MemberCounter()
 
     // A workaround for CVE-2021-44228 is to remove the `JndiLookup` class,
     // so check that exists first. https://www.kb.cert.org/vuls/id/930724#workarounds
@@ -60,34 +59,36 @@ fun check(programClassPool: ClassPool): Boolean {
     // Prefix with `**` to take into account shadow packing.
     programClassPool.classesAccept("**org/apache/logging/log4j/core/lookup/JndiLookup", jndiLookupCounter)
 
-    if (jndiLookupCounter.count > 0) {
-        // Versions prior to 2.15.0 have the following constructor in JndiManager:
-        // private <init>(Ljava/lang/String;Ljavax/naming/Context;)V
-        //
-        // https://github.com/apache/logging-log4j2/blob/rel/2.14.1/log4j-core/src/main/java/org/apache/logging/log4j/core/net/JndiManager.java
-        //
-        // Based on Yara rule https://github.com/darkarnium/Log4j-CVE-Detect/blob/main/rules/vulnerability/log4j/CVE-2021-44228.yar
+    if (jndiLookupCounter.count == 0) return false
 
-        programClassPool.classesAccept(
-            // Prefix with `**` to take into account shadow packing.
-            "**org/apache/logging/log4j/core/net/JndiManager",
-            AllMemberVisitor(
-                MethodFilter(
-                    ConstructorMethodFilter(
-                        MemberAccessFilter(
-                            /* requiredSetAccessFlags = */ PRIVATE, /* requiredUnsetAccessFlags = */ 0,
-                            MemberDescriptorFilter(
-                                "(Ljava/lang/String;Ljavax/naming/Context;)V",
-                                jndiManagerOldConstructorCounter
-                            )
+    val jndiManagerOldConstructorCounter = MemberCounter()
+
+    // Versions prior to 2.15.0 have the following constructor in JndiManager:
+    // private <init>(Ljava/lang/String;Ljavax/naming/Context;)V
+    //
+    // https://github.com/apache/logging-log4j2/blob/rel/2.14.1/log4j-core/src/main/java/org/apache/logging/log4j/core/net/JndiManager.java
+    //
+    // Based on Yara rule https://github.com/darkarnium/Log4j-CVE-Detect/blob/main/rules/vulnerability/log4j/CVE-2021-44228.yar
+
+    programClassPool.classesAccept(
+        // Prefix with `**` to take into account shadow packing.
+        "**org/apache/logging/log4j/core/net/JndiManager",
+        AllMemberVisitor(
+            MethodFilter(
+                ConstructorMethodFilter(
+                    MemberAccessFilter(
+                        /* requiredSetAccessFlags = */ PRIVATE, /* requiredUnsetAccessFlags = */ 0,
+                        MemberDescriptorFilter(
+                            "(Ljava/lang/String;Ljavax/naming/Context;)V",
+                            jndiManagerOldConstructorCounter
                         )
                     )
                 )
             )
         )
-    }
+    )
 
-    return jndiLookupCounter.count > 0 && jndiManagerOldConstructorCounter.count > 0
+    return jndiManagerOldConstructorCounter.count > 0
 }
 
 private fun readInput(inputFile: File): ClassPool {
