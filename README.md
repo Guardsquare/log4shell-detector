@@ -10,7 +10,7 @@ and [Apache Log4j Security Vulnerabilities](https://logging.apache.org/log4j/2.x
 
 # Executing
 
-You can download the [release distribution](https://github.com/mrjameshamilton/log4shell-detector/releases/tag/v1.0.0), extract and run the shell/bat script. The input can be a jar file, class file, directory, Android aar or Android apk.
+You can download the [release distribution](https://github.com/Guardsquare/log4shell-detector/releases/tag/v1.0.0), extract and run the shell/bat script. The input can be a jar file, class file, directory, Android aar or Android apk.
 
 ```
 $ bin/log4shell-detector <path-to-jar>
