@@ -15,8 +15,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.guardsquare:proguard-core:8.0.5")
-    implementation("com.github.pxb1988:dex2jar:v2.1")
+    implementation("com.github.Guardsquare:proguard-core:89f74ba111")
     testImplementation(kotlin("test"))
     testImplementation("io.kotest:kotest-runner-junit5-jvm:5.0.3")
     testImplementation("io.kotest:kotest-assertions-core-jvm:5.0.3")

@@ -4,22 +4,14 @@ import proguard.classfile.AccessConstants.PRIVATE
 import proguard.classfile.ClassPool
 import proguard.classfile.visitor.AllMemberVisitor
 import proguard.classfile.visitor.ClassCounter
-import proguard.classfile.visitor.ClassPoolFiller
 import proguard.classfile.visitor.ConstructorMethodFilter
 import proguard.classfile.visitor.MemberAccessFilter
 import proguard.classfile.visitor.MemberCounter
 import proguard.classfile.visitor.MemberDescriptorFilter
 import proguard.classfile.visitor.MethodFilter
-import proguard.io.ClassReader
-import proguard.io.DataEntryNameFilter
-import proguard.io.DataEntryReader
-import proguard.io.Dex2JarReader
-import proguard.io.DirectorySource
-import proguard.io.FilteredDataEntryReader
-import proguard.io.JarReader
+import proguard.io.DexClassReader
 import proguard.io.NameFilteredDataEntryReader
-import proguard.util.ExtensionMatcher
-import proguard.util.OrMatcher
+import proguard.io.util.IOUtil.read
 import java.io.File
 
 fun main(args: Array<String>) {
@@ -91,58 +83,14 @@ fun check(programClassPool: ClassPool): Boolean {
     return jndiManagerOldConstructorCounter.count > 0
 }
 
-private fun readInput(inputFile: File): ClassPool {
-    val programClassPool = ClassPool()
-    var classReader: DataEntryReader = NameFilteredDataEntryReader(
-        "**.class",
-        ClassReader(
-            /* isLibrary = */ false,
-            /* skipNonPublicLibraryClasses = */ false,
-            /* skipNonPublicLibraryClassMembers = */ false,
-            /* ignoreStackMapAttributes = */ false,
-            /* warningPrinter = */ null,
-            ClassPoolFiller(programClassPool)
-        )
-    )
-
-    classReader = NameFilteredDataEntryReader(
-        "classes*.dex",
-        Dex2JarReader(
-            false,
-            classReader
-        ),
-        classReader
-    )
-
-    classReader = FilteredDataEntryReader(
-        DataEntryNameFilter(ExtensionMatcher(".aar")),
-        JarReader(
-            NameFilteredDataEntryReader(
-                "classes.jar",
-                JarReader(classReader)
-            )
-        ),
-        FilteredDataEntryReader(
-            DataEntryNameFilter(
-                OrMatcher(
-                    ExtensionMatcher(".jar"),
-                    ExtensionMatcher(".war"),
-                    ExtensionMatcher(".zip"),
-                    ExtensionMatcher(".apk")
-                )
+private fun readInput(inputFile: File): ClassPool =
+    read(inputFile.absolutePath, "**", true) { dataEntryReader, classPoolFiller ->
+        NameFilteredDataEntryReader(
+            "classes*.dex",
+            DexClassReader(
+                false,
+                classPoolFiller
             ),
-            JarReader(classReader),
-            classReader
+            dataEntryReader
         )
-    )
-
-    DirectorySource(inputFile).pumpDataEntries {
-        try {
-            classReader.read(it)
-        } catch (e: Exception) {
-            println("ERROR: Failed to read '${it.name}'")
-        }
     }
-
-    return programClassPool
-}
